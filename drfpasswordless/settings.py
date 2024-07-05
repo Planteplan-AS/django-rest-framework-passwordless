@@ -54,6 +54,9 @@ DEFAULTS = {
     # Registers previously unseen aliases as new users.
     'PASSWORDLESS_REGISTER_NEW_USERS': True,
 
+    # Regex for validating new email users
+    'PASSWORDLESS_REGISTER_EMAIL_ADDRESS_REGEX': None,
+
     # Suppresses actual SMS for testing
     'PASSWORDLESS_TEST_SUPPRESSION': False,
 

@@ -1,4 +1,6 @@
 import logging
+import re
+
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
@@ -37,6 +39,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     def validate(self, attrs):
         alias = attrs.get(self.alias_type)
 
+        msgs = []
         if alias:
             # Create or authenticate a user
             # Return THem
@@ -46,9 +49,15 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 try:
                     user = User.objects.get(**{self.alias_type+'__iexact': alias})
                 except User.DoesNotExist:
-                    user = User.objects.create(**{self.alias_type: alias})
-                    user.set_unusable_password()
-                    user.save()
+                    if self.alias_type == 'email' and \
+                            api_settings.PASSWORDLESS_REGISTER_EMAIL_ADDRESS_REGEX and not \
+                            re.match(api_settings.PASSWORDLESS_REGISTER_EMAIL_ADDRESS_REGEX, alias):
+                        user = None
+                        msgs.append(_('Email address is not pre-authorized!'))
+                    else:
+                        user = User.objects.create(**{self.alias_type: alias})
+                        user.set_unusable_password()
+                        user.save()
             else:
                 # If new aliases should not register new users.
                 try:
@@ -59,14 +68,14 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
             if user:
                 if not user.is_active:
                     # If valid, return attrs so we can create a token in our logic controller
-                    msg = _('User account is disabled.')
-                    raise serializers.ValidationError(msg)
+                    msgs.append(_('User account is disabled.'))
+                    raise serializers.ValidationError(msgs)
             else:
-                msg = _('No account is associated with this alias.')
-                raise serializers.ValidationError(msg)
+                msgs.append(_('No account is associated with this alias.'))
+                raise serializers.ValidationError(msgs)
         else:
-            msg = _('Missing %s.') % self.alias_type
-            raise serializers.ValidationError(msg)
+            msgs.append(_('Missing %s.') % self.alias_type)
+            raise serializers.ValidationError(msgs)
 
         attrs['user'] = user
         return attrs
