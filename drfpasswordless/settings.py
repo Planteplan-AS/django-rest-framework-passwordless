@@ -63,6 +63,9 @@ DEFAULTS = {
     # Context Processors for Email Template
     'PASSWORDLESS_CONTEXT_PROCESSORS': [],
 
+    # HTML Post Processors for Email Template
+    'PASSWORDLESS_HTML_POST_PROCESSORS': [],
+
     # The verification email subject
     'PASSWORDLESS_EMAIL_VERIFICATION_SUBJECT': "Your Verification Token",
 

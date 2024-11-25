@@ -8,11 +8,16 @@ from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from drfpasswordless.models import CallbackToken
 from drfpasswordless.settings import api_settings
+from django.utils.module_loading import import_string
 
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+HTML_POST_PROCESSORS = []
+if api_settings.PASSWORDLESS_HTML_POST_PROCESSORS:
+    for processor in api_settings.PASSWORDLESS_HTML_POST_PROCESSORS:
+        HTML_POST_PROCESSORS.append(import_string(processor))
 
 def authenticate_by_token(callback_token):
     try:
@@ -136,6 +141,10 @@ def send_email_with_callback_token(user, email_token, **kwargs):
             # Inject context if user specifies.
             context = inject_template_context({'callback_token': email_token.key, })
             html_message = loader.render_to_string(email_html, context,)
+
+            for post_processor in HTML_POST_PROCESSORS:
+                html_message = post_processor(html_message)
+
             send_mail(
                 email_subject,
                 email_plaintext % email_token.key,
