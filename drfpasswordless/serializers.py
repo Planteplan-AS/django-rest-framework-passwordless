@@ -52,8 +52,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                     if self.alias_type == 'email' and \
                             api_settings.PASSWORDLESS_REGISTER_EMAIL_ADDRESS_REGEX and not \
                             re.match(api_settings.PASSWORDLESS_REGISTER_EMAIL_ADDRESS_REGEX, alias):
-                        user = None
-                        msgs.append(_('Email address is not pre-authorized!'))
+                        raise serializers.ValidationError(_('Email address is not pre-authorized!'), code=461)
                     else:
                         user = User.objects.create(**{self.alias_type: alias})
                         user.set_unusable_password()

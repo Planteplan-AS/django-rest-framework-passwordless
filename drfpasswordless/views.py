@@ -13,6 +13,7 @@ from drfpasswordless.serializers import (
     CallbackTokenVerificationSerializer,
     EmailVerificationSerializer,
     MobileVerificationSerializer,
+    ValidationError,
 )
 from drfpasswordless.services import TokenService
 
@@ -49,22 +50,30 @@ class AbstractBaseObtainCallbackToken(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.serializer_class(data=request.data, context={'request': request})
-        if serializer.is_valid(raise_exception=True):
-            # Validate -
-            user = serializer.validated_data['user']
-            # Create and send callback token
-            success = TokenService.send_token(user, self.alias_type, self.token_type, **self.message_payload)
+        try:
+            if serializer.is_valid(raise_exception=True):
+                # Validate -
+                user = serializer.validated_data['user']
+                # Create and send callback token
+                success = TokenService.send_token(user, self.alias_type, self.token_type, **self.message_payload)
 
-            # Respond With Success Or Failure of Sent
-            if success:
-                status_code = status.HTTP_200_OK
-                response_detail = self.success_response
+                # Respond With Success Or Failure of Sent
+                if success:
+                    status_code = status.HTTP_200_OK
+                    response_detail = self.success_response
+                else:
+                    status_code = status.HTTP_400_BAD_REQUEST
+                    response_detail = self.failure_response
+                return Response({"detail": response_detail}, status=status_code)
             else:
-                status_code = status.HTTP_400_BAD_REQUEST
-                response_detail = self.failure_response
-            return Response({"detail": response_detail}, status=status_code)
-        else:
-            return Response(serializer.error_messages, status=status.HTTP_400_BAD_REQUEST)
+                return Response(serializer.error_messages, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            code = status.HTTP_400_BAD_REQUEST
+            if ('non_field_errors' in e.detail and len(e.detail['non_field_errors']) > 0):
+                code = e.detail['non_field_errors'][0].code
+            elif ('email' in e.detail and len(e.detail['email']) > 0 and e.detail['email'][0].code == 'invalid'):
+                code = 462
+            return Response(serializer.error_messages, status=code)
 
 
 class ObtainEmailCallbackToken(AbstractBaseObtainCallbackToken):
