@@ -133,6 +133,7 @@ def send_email_with_callback_token(user, email_token, **kwargs):
             # Get email subject and message
             email_subject = kwargs.get('email_subject',
                                        api_settings.PASSWORDLESS_EMAIL_SUBJECT)
+            email_subject = email_subject.format(callback_token=email_token.key)
             email_plaintext = kwargs.get('email_plaintext',
                                          api_settings.PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE)
             email_html = kwargs.get('email_html',

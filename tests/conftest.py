@@ -53,6 +53,7 @@ def pytest_configure():
             'django.contrib.auth.hashers.MD5PasswordHasher',
         ),
         AUTH_USER_MODEL='tests.CustomUser',
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
     )
 
     try:

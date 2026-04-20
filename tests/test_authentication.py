@@ -3,9 +3,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
 from django.contrib.auth import get_user_model
+from django.core import mail
 from django.urls import reverse
 from drfpasswordless.settings import api_settings, DEFAULTS
-from drfpasswordless.utils import CallbackToken
+from drfpasswordless.utils import CallbackToken, send_email_with_callback_token
 
 User = get_user_model()
 
@@ -364,4 +365,22 @@ class MobileLoginCallbackTokenTests(APITestCase):
         api_settings.PASSWORDLESS_TEST_SUPPRESSION = DEFAULTS['PASSWORDLESS_TEST_SUPPRESSION']
         api_settings.PASSWORDLESS_AUTH_TYPES = DEFAULTS['PASSWORDLESS_AUTH_TYPES']
         api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER = DEFAULTS['PASSWORDLESS_MOBILE_NOREPLY_NUMBER']
-        self.user.delete()
+
+
+class EmailSubjectTemplateTests(APITestCase):
+
+    def setUp(self):
+        mail.outbox = []
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = 'noreply@example.com'
+        self.email_field_name = api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME
+
+    def test_email_subject_contains_token(self):
+        user = User.objects.create(**{self.email_field_name: 'subject_test@example.com'})
+        token = CallbackToken.objects.create(user=user, key='123456', is_active=True,
+                                             type=CallbackToken.TOKEN_TYPE_AUTH)
+        send_email_with_callback_token(user, token, email_subject='Your code is {callback_token}')
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, 'Your code is 123456')
+
+    def tearDown(self):
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = DEFAULTS['PASSWORDLESS_EMAIL_NOREPLY_ADDRESS']
